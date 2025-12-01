@@ -52,24 +52,6 @@ void XensivPasCO2::loop() {
   }
 }
 
-void XensivPasCO2::disable_abc() {
-  uint8_t reg_value = 0;
-  if (!this->read_byte(XENSIV_PAS_CO2_REG_MEAS_CFG, &reg_value)) {
-    ESP_LOGW(TAG, "Failed to read ABC control register");
-    return;
-  }
-
-  // Clear only bits 3:2 (BOC_CFG) and set to 0b00, preserving other bits
-  reg_value &= ~XENSIV_PAS_CO2_REG_MEAS_CFG_BOC_CFG_MSK;           // Clear BOC_CFG bits
-  reg_value |= (0b00 << XENSIV_PAS_CO2_REG_MEAS_CFG_BOC_CFG_POS);  // Set BOC_CFG to 0b00
-
-  if (!this->write_byte(XENSIV_PAS_CO2_REG_MEAS_CFG, reg_value)) {
-    ESP_LOGW(TAG, "Failed to write ABC control register");
-  } else {
-    ESP_LOGCONFIG(TAG, "ABC disabled successfully");
-  }
-}
-
 void XensivPasCO2::setup_sensor(XensivPasCO2 *arg) {
   ESP_LOGCONFIG(TAG, "Starting sensor configuration...");
 
@@ -121,6 +103,38 @@ void XensivPasCO2::setup_sensor(XensivPasCO2 *arg) {
       ESP_LOGD(TAG, "Sensor initialized");
     }
   });
+}
+
+void XensivPasCO2::disable_abc() {
+  uint8_t reg_value = 0;
+  if (!this->read_byte(XENSIV_PAS_CO2_REG_MEAS_CFG, &reg_value)) {
+    ESP_LOGW(TAG, "Failed to read ABC control register");
+    return;
+  }
+
+  // Clear only bits 3:2 (BOC_CFG) and set to 0b00, preserving other bits
+  reg_value &= ~XENSIV_PAS_CO2_REG_MEAS_CFG_BOC_CFG_MSK;           // Clear BOC_CFG bits
+  reg_value |= (0b00 << XENSIV_PAS_CO2_REG_MEAS_CFG_BOC_CFG_POS);  // Set BOC_CFG to 0b00
+
+  if (!this->write_byte(XENSIV_PAS_CO2_REG_MEAS_CFG, reg_value)) {
+    ESP_LOGW(TAG, "Failed to write ABC control register");
+  } else {
+    ESP_LOGCONFIG(TAG, "ABC disabled successfully");
+  }
+
+  // Manual calibration reference setting (optional)
+  // int16_t calib_ref = 400;
+  // uint8_t calib_ref_h = (calib_ref >> 8) & 0xFF;
+  // uint8_t calib_ref_l = calib_ref & 0xFF;
+  // this->write_byte(XENSIV_PAS_CO2_REG_CALIB_REF_H, calib_ref_h);
+  // this->write_byte(XENSIV_PAS_CO2_REG_CALIB_REF_L, calib_ref_l);
+  // ESP_LOGD(TAG, "Sensor calibration reference set to %d ppm", calib_ref);
+}
+
+void XensivPasCO2::sensrst() {
+  // Write 0xCF to the SRTRG register (XENSIV_PAS_CO2_REG_SRTRG) to store non-volatile
+  this->write_byte(XENSIV_PAS_CO2_REG_SENS_RST, 0xCF);
+  ESP_LOGD(TAG, "Sensor reset command sent");
 }
 
 bool XensivPasCO2::test_scratch_register_() {

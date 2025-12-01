@@ -23,6 +23,8 @@ class XensivPasCO2 : public Component {
   void set_pressure_compensation_source(sensor::Sensor *sensor) { pressure_compensation_source_ = sensor; }
   void set_abc_enabled(bool enabled) { abc_enabled_ = enabled; }
   bool measure_now();
+  void disable_abc();
+  void sensrst();
 
  protected:
   sensor::Sensor *co2_sensor_{nullptr};
@@ -51,8 +53,7 @@ class XensivPasCO2 : public Component {
 
   std::string failure_reason_;
 
-  bool abc_enabled_{true};  // Default: ABC enabled
-  void disable_abc();
+  bool abc_enabled_{false};  // Default: ABC disabled
 };
 
 }  // namespace xensiv_pas_co2_base
