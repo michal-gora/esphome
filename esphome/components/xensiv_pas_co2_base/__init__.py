@@ -18,7 +18,7 @@ CONF_SENSOR_RATE = "sensor_rate"
 CONF_OPERATION_MODE = "operation_mode"
 CONF_PRESSURE_COMPENSATION = "pressure_compensation"
 CONF_PRESSURE_COMPENSATION_SOURCE = "pressure_compensation_source"
-
+CONF_ABC_ENABLED = "abc_enabled"
 
 xensiv_pas_co2_ns = cg.esphome_ns.namespace("xensiv_pas_co2_base")
 
@@ -44,6 +44,7 @@ CONFIG_SCHEMA_BASE = cv.Schema(
         ),
         cv.Optional(CONF_PRESSURE_COMPENSATION): cv.pressure,
         cv.Optional(CONF_PRESSURE_COMPENSATION_SOURCE): cv.use_id(sensor.Sensor),
+        cv.Optional(CONF_ABC_ENABLED, default=False): cv.boolean,
     }
 ).extend(cv.COMPONENT_SCHEMA)
 
@@ -79,5 +80,8 @@ async def to_code_base(config):
 
     if CONF_OPERATION_MODE in config:
         cg.add(var.set_operation_mode(config[CONF_OPERATION_MODE]))
+
+    if CONF_ABC_ENABLED in config:
+        cg.add(var.set_abc_enabled(config[CONF_ABC_ENABLED]))
 
     return var

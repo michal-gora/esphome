@@ -52,11 +52,34 @@ void XensivPasCO2::loop() {
   }
 }
 
+void XensivPasCO2::disable_abc() {
+  uint8_t reg_value = 0;
+  if (!this->read_byte(XENSIV_PAS_CO2_REG_MEAS_CFG, &reg_value)) {
+    ESP_LOGW(TAG, "Failed to read ABC control register");
+    return;
+  }
+
+  // Clear only bits 3:2 (BOC_CFG) and set to 0b00, preserving other bits
+  reg_value &= ~XENSIV_PAS_CO2_REG_MEAS_CFG_BOC_CFG_MSK;           // Clear BOC_CFG bits
+  reg_value |= (0b00 << XENSIV_PAS_CO2_REG_MEAS_CFG_BOC_CFG_POS);  // Set BOC_CFG to 0b00
+
+  if (!this->write_byte(XENSIV_PAS_CO2_REG_MEAS_CFG, reg_value)) {
+    ESP_LOGW(TAG, "Failed to write ABC control register");
+  } else {
+    ESP_LOGCONFIG(TAG, "ABC disabled successfully");
+  }
+}
+
 void XensivPasCO2::setup_sensor(XensivPasCO2 *arg) {
   ESP_LOGCONFIG(TAG, "Starting sensor configuration...");
 
   if (!arg->update_sensor_rate_()) {
     ESP_LOGE(TAG, "Failed to set sensor rate");
+  }
+
+  // Disable ABC if not enabled
+  if (!arg->abc_enabled_) {
+    arg->disable_abc();
   }
 
   // Set pressure compensation if configured
@@ -350,6 +373,7 @@ void XensivPasCO2::dump_config() {
   } else {
     ESP_LOGCONFIG(TAG, "  Pressure Compensation: Using sensor default : 1015 hPa");
   }
+  ESP_LOGCONFIG(TAG, "  ABC (Automatic Baseline Correction): %s", this->abc_enabled_ ? "ENABLED" : "DISABLED");
 }
 }  // namespace xensiv_pas_co2_base
 }  // namespace esphome
