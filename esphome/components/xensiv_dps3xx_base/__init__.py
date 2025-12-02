@@ -43,7 +43,7 @@ CONFIG_SCHEMA_BASE = cv.Schema(
 ).extend(cv.COMPONENT_SCHEMA)
 
 SENSOR_MAP = {
-    CONF_PRESSURE: "set_dps_sensor",
+    CONF_PRESSURE: "set_pressure_sensor",
 }
 
 

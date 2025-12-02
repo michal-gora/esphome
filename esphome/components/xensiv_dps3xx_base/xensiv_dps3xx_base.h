@@ -3,7 +3,9 @@
 #include "esphome/core/component.h"
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/core/gpio.h"
-#include "xensiv_dps3xx.h"
+#include "dps_config.h"
+#include "dps3xx_config.h"
+
 namespace esphome {
 namespace xensiv_dps3xx_base {
 
@@ -13,30 +15,56 @@ class XensivDPS3xx : public Component {
   void loop() override;
   void dump_config() override;
 
-  void set_dps_sensor(sensor::Sensor *dps_sensor) { dps_sensor_ = dps_sensor; }
+  void set_pressure_sensor(sensor::Sensor *sensor) { pressure_sensor_ = sensor; }
+  void set_temperature_sensor(sensor::Sensor *sensor) { temperature_sensor_ = sensor; }
   void set_interrupt_pin(InternalGPIOPin *pin) { interrupt_pin_ = pin; }
-  // void set_sensor_rate_value(int16_t rate) { sensor_rate_ = rate; }
-  // void set_operation_mode(bool mode) { continuous_operation_mode_ = mode; }
+
   bool measure_now();
 
  protected:
-  sensor::Sensor *dps_sensor_{nullptr};
-  uint16_t version_{2};
-  // int16_t sensor_rate_{10};               // Default rate in seconds
+  sensor::Sensor *pressure_sensor_{nullptr};
+  sensor::Sensor *temperature_sensor_{nullptr};
 
-  xensiv_dps3xx_t dps_obj_{};  // DPS3xx sensor object (zero-initialized)
-  xensiv_dps3xx_i2c_addr_t i2c_addr_{XENSIV_DPS3XX_I2C_ADDR_DEFAULT};
+  // Sensor state
+  uint8_t product_id_{0};
+  uint8_t revision_id_{0};
+  uint8_t temp_sensor_{0};
+
+  // Calibration coefficients
+  int32_t c00_{0};
+  int32_t c10_{0};
+  int32_t c01_{0};
+  int32_t c11_{0};
+  int32_t c20_{0};
+  int32_t c21_{0};
+  int32_t c30_{0};
+  int32_t c0_half_{0};
+  int32_t c1_{0};
+
+  // Measurement configuration
+  uint8_t temp_mr_{DPS__MEASUREMENT_RATE_4};
+  uint8_t temp_osr_{DPS__OVERSAMPLING_RATE_8};
+  uint8_t prs_mr_{DPS__MEASUREMENT_RATE_4};
+  uint8_t prs_osr_{DPS__OVERSAMPLING_RATE_8};
 
   static void gpio_intr(XensivDPS3xx *arg);
-  bool test_scratch_register_();
 
-  // Static I2C wrapper functions for the library
-  static cy_rslt_t i2c_read_wrapper(void *context, uint16_t timeout, uint8_t i2c_addr, uint8_t reg_adr, uint8_t *data,
-                                    uint8_t length);
-  static cy_rslt_t i2c_write_wrapper(void *context, uint16_t timeout, uint8_t i2c_addr, uint8_t reg_adr, uint8_t *data,
-                                     uint8_t length);
-  static cy_rslt_t delay_wrapper(uint32_t ms);
+  // Sensor initialization and configuration
+  bool init_sensor_();
+  bool read_calibration_coefficients_();
+  bool configure_sensor_();
 
+  // Measurement functions
+  bool read_pressure_temperature_(float &pressure, float &temperature);
+  float calculate_temperature_(int32_t raw);
+  float calculate_pressure_(int32_t raw_prs, int32_t raw_temp);
+
+  // Register access helpers
+  int16_t read_byte_bitfield_(RegMask_t reg_mask);
+  int16_t write_byte_bitfield_(uint8_t data, RegMask_t reg_mask);
+  void get_twos_complement_(int32_t *raw, uint8_t length);
+
+  // Pure virtual I2C methods - implemented by I2C subclass
   virtual bool read_byte(uint8_t reg, uint8_t *data) = 0;
   virtual bool read_bytes(uint8_t reg, uint8_t *data, size_t len) = 0;
   virtual bool write_byte(uint8_t reg, uint8_t value) = 0;
