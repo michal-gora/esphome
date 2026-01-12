@@ -5,7 +5,7 @@
 
 namespace esphome {
 namespace xensiv_dps3xx_base {
-static const char *const TAG = "xensiv_dps3xx.sensor";
+static const char *const TAG = "xensiv_dps3xx.component";
 
 void XensivDPS3xx::setup() {
   this->Dps3xxPressureSensor = new Dps3xx(this);
