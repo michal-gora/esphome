@@ -3,7 +3,7 @@
 
 namespace esphome {
 namespace xensiv_pas_co2_base {
-static const char *const TAG = "xensiv_pas_co2.component";
+static const char *const TAG = "xensiv_pas_co2.sensor";
 
 void XensivPasCO2::setup() {
   ESP_LOGCONFIG(TAG, "Setting up XensivPasCO2 component");
