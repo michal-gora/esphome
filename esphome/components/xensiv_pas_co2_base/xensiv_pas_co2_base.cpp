@@ -46,6 +46,7 @@ void XensivPasCO2::loop() {
 
   // Check if data is ready via interrupt
   if (this->data_ready_) {
+    ESP_LOGD(TAG, "Interrupt from CO2 detected");
     this->data_ready_ = false;  // Clear flag
 
     // Read CO2 data
