@@ -98,10 +98,10 @@ binary_sensor:
     id: window_open
     device_class: window
     lambda: |-
-      float threshold = 0.5;
+      float threshold = -0.5;
       float z = id(accel_z).state;
       // Window closed: z ≈ 0.0 (gravity), Window open: z drops when tilted backwards
-      return abs(z) > threshold;  // Adjust threshold based on testing
+      return z < threshold;  // Adjust threshold based on testing
 
 # TFT Display
 display:
