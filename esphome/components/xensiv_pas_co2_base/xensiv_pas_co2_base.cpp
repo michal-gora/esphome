@@ -131,18 +131,21 @@ bool XensivPasCO2::test_scratch_register_() {
   // Write test pattern to scratch register
   if (!this->write_byte(XENSIV_PAS_CO2_REG_SCRATCH_PAD, XENSIV_PAS_CO2_COMM_TEST_VAL)) {
     ESP_LOGE(TAG, "Failed to write to scratch register");
+    this->failure_reason_ += "Failed to write to scratch register; ";
     return false;
   }
 
   // Read back the value
   if (!this->read_byte(XENSIV_PAS_CO2_REG_SCRATCH_PAD, &read_val)) {
     ESP_LOGE(TAG, "Failed to read from scratch register");
+    this->failure_reason_ += "Failed to read from scratch register; ";
     return false;
   }
 
   // Verify the value matches
   if (read_val != XENSIV_PAS_CO2_COMM_TEST_VAL) {
     ESP_LOGE(TAG, "Scratch register test failed: expected 0x%02X, got 0x%02X", XENSIV_PAS_CO2_COMM_TEST_VAL, read_val);
+    this->failure_reason_ += "Scratch register test failed, values don't match; ";
     return false;
   }
 
