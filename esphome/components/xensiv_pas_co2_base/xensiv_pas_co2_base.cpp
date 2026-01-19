@@ -401,7 +401,7 @@ void XensivPasCO2::read_co2_ppm() {
 void XensivPasCO2::dump_config() {
   ESP_LOGCONFIG(TAG, "XENSIV PASCO2 CO2 Sensor:");
 
-  if (this->is_failed() || true) {
+  if (this->failure_reason_.length() > 0) {
     ESP_LOGE(TAG, "Failure Reason: %s", this->failure_reason_.c_str());
   }
 
