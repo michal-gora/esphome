@@ -34,9 +34,11 @@ class XensivPasCO2 : public Component {
   int16_t sensor_rate_{10};               // Default rate in seconds
   bool continuous_operation_mode_{true};  // Default: continuous mode
   bool initialized_{false};               // Sensor initialization complete flag
+  uint8_t init_retry_count_{0};           // Retry counter for I2C init during warm boot recovery
 
   static void gpio_intr(XensivPasCO2 *arg);
   static void setup_sensor(XensivPasCO2 *arg);
+  void continue_setup_();
   void verify_sensor_status_();
   bool test_scratch_register_();
   bool update_operation_mode_();

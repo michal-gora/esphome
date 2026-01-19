@@ -6,14 +6,30 @@ namespace xensiv_pas_co2_base {
 static const char *const TAG = "xensiv_pas_co2.component";
 
 void XensivPasCO2::setup() {
-  // Set up power pin first if configured (enables sensor power)
+  // Set up power pin first if configured (for 12V MEMS sensor power)
   if (this->power_pin_ != nullptr) {
     this->power_pin_->setup();
     this->power_pin_->digital_write(true);
   }
 
+  // Send blind soft reset first to abort any ongoing measurement (warm boot recovery)
+  // Ignore return value - command may get through even if sensor NACKs due to busy state
+  this->write_byte(XENSIV_PAS_CO2_REG_SENS_RST, XENSIV_PAS_CO2_CMD_SOFT_RESET);
+
+  // Wait for soft reset to complete, then proceed with initialization
+  this->set_timeout(XENSIV_PAS_CO2_SOFT_RESET_DELAY_MS, [this]() { this->continue_setup_(); });
+}
+
+void XensivPasCO2::continue_setup_() {
   // Step 1: Test I2C communication using scratch register (per official library)
   if (!this->test_scratch_register_()) {
+    // Retry a few times with delays - sensor may be recovering from stuck I2C state
+    this->init_retry_count_++;
+    if (this->init_retry_count_ < 5) {
+      // Retry after 500ms
+      this->set_timeout(500, [this]() { this->continue_setup_(); });
+      return;
+    }
     this->failure_reason_ += "I2C communication test failed; ";
     this->mark_failed(LOG_STR("I2C communication test failed"));
     return;
