@@ -23,14 +23,6 @@ void XensivPasCO2::setup() {
 void XensivPasCO2::continue_setup_() {
   // Step 1: Test I2C communication using scratch register (per official library)
   if (!this->test_scratch_register_()) {
-    // Retry a few times with delays - sensor may be recovering from stuck I2C state
-    this->init_retry_count_++;
-    if (this->init_retry_count_ < 5) {
-      // Retry after 500ms
-      this->failure_reason_ += "I2C communication test failed, retrying...; ";
-      this->set_timeout(500, [this]() { this->continue_setup_(); });
-      return;
-    }
     this->failure_reason_ += "I2C communication test failed; ";
     this->mark_failed(LOG_STR("I2C communication test failed"));
     return;
