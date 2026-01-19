@@ -6,35 +6,69 @@ namespace xensiv_pas_co2_base {
 static const char *const TAG = "xensiv_pas_co2.component";
 
 void XensivPasCO2::setup() {
-  // Perform soft reset FIRST to put sensor in known state (especially needed after warm boot)
-  // This might fail if sensor is busy, but we'll verify communication after the delay
+  // Set up power pin first if configured (enables sensor power)
+  if (this->power_pin_ != nullptr) {
+    this->power_pin_->setup();
+    this->power_pin_->digital_write(true);
+  }
+
+  // Step 1: Test I2C communication using scratch register (per official library)
+  if (!this->test_scratch_register_()) {
+    this->failure_reason_ += "I2C communication test failed; ";
+    this->mark_failed(LOG_STR("I2C communication test failed"));
+    return;
+  }
+
+  // Step 2: Soft reset to put sensor in known state
   if (!this->write_byte(XENSIV_PAS_CO2_REG_SENS_RST, XENSIV_PAS_CO2_CMD_SOFT_RESET)) {
     this->failure_reason_ += "Failed to write soft reset command; ";
+    this->mark_failed(LOG_STR("Failed to write soft reset command"));
+    return;
   }
 
-  // Wait for soft reset to complete, then test I2C communication
-  this->set_timeout(XENSIV_PAS_CO2_SOFT_RESET_DELAY_MS, [this]() { this->verify_communication_(); });
+  // Step 3: Wait for soft reset to complete, then verify sensor status
+  this->set_timeout(XENSIV_PAS_CO2_SOFT_RESET_DELAY_MS, [this]() { this->verify_sensor_status_(); });
 }
 
-void XensivPasCO2::verify_communication_() {
-  // Test I2C communication using scratch register
-  for (int i = 0; i < 3; i++) {
-    if (this->test_scratch_register_()) {
-      // Set up pressure compensation source callback after I2C is verified
-      if (this->pressure_compensation_source_ != nullptr) {
-        this->pressure_compensation_source_->add_on_state_callback(
-            [this](float pressure_hpa) { this->set_pressure_compensation((uint16_t) pressure_hpa); });
-      }
-
-      // Continue with sensor configuration
-      XensivPasCO2::setup_sensor(this);
-      return;
-    }
+void XensivPasCO2::verify_sensor_status_() {
+  // Step 4: Read SENS_STS and check for errors (per official library)
+  xensiv_pas_co2_status_t sens_sts;
+  if (!this->read_byte(XENSIV_PAS_CO2_REG_SENS_STS, &sens_sts.u)) {
+    this->failure_reason_ += "Failed to read SENS_STS register; ";
+    this->mark_failed(LOG_STR("Failed to read SENS_STS register"));
+    return;
   }
 
-  // All attempts failed
-  this->failure_reason_ += "I2C communication test failed";
-  this->mark_failed(LOG_STR("I2C communication test failed"));
+  // Check for errors in priority order (per official library)
+  if (sens_sts.b.iccerr) {
+    this->failure_reason_ += "Communication error detected (ICCERR); ";
+    this->mark_failed(LOG_STR("Communication error (ICCERR)"));
+    return;
+  }
+  if (sens_sts.b.orvs) {
+    this->failure_reason_ += "Out-of-range VDD12V error (ORVS); ";
+    this->mark_failed(LOG_STR("Out-of-range VDD12V (ORVS)"));
+    return;
+  }
+  if (sens_sts.b.ortmp) {
+    this->failure_reason_ += "Out-of-range temperature error (ORTMP); ";
+    this->mark_failed(LOG_STR("Out-of-range temperature (ORTMP)"));
+    return;
+  }
+  if (!sens_sts.b.sen_rdy) {
+    this->failure_reason_ += "Sensor not ready (SEN_RDY=0); ";
+    this->mark_failed(LOG_STR("Sensor not ready"));
+    return;
+  }
+
+  // Sensor is ready - set up pressure compensation source callback
+  if (this->pressure_compensation_source_ != nullptr) {
+    this->pressure_compensation_source_->add_on_state_callback(
+        [this](float pressure_hpa) { this->set_pressure_compensation((uint16_t) pressure_hpa); });
+  }
+
+  // Continue with sensor configuration
+  XensivPasCO2::setup_sensor(this);
 }
 
 void XensivPasCO2::loop() {
