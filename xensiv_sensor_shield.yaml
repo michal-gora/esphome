@@ -62,7 +62,7 @@ sensor:
     temperature:
       name: "BMI270 Temperature"
 
-# Fix: Use button platform for Home Assistant UI button
+# button platform for Home Assistant UI button
 button:
   - platform: template
     name: "Measure CO2 Now"
