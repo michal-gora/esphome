@@ -36,6 +36,7 @@ class XensivPasCO2 : public Component {
 
   static void gpio_intr(XensivPasCO2 *arg);
   static void setup_sensor(XensivPasCO2 *arg);
+  void verify_communication_();
   bool test_scratch_register_();
   bool update_operation_mode_();
   bool update_sensor_rate_();
