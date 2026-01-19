@@ -25,7 +25,7 @@ sensor:
     sensor_rate: 1min
     operation_mode: continuous
     pressure_compensation_source: pressure_sensor
-    power_pin: GPIO13 # Enable PAS CO2 5V Power (GPIO13 HIGH)
+    power_pin: GPIO13  # Enable PAS CO2 5V Power (GPIO13 HIGH)
   - platform: xensiv_dps3xx_i2c
     pressure:
       name: "DPS3XX Pressure"
@@ -48,10 +48,13 @@ sensor:
     address: 0x69
     accel_x:
       name: "BMI270 Accel X"
+      id: accel_x
     accel_y:
       name: "BMI270 Accel Y"
+      id: accel_y
     accel_z:
       name: "BMI270 Accel Z"
+      id: accel_z
     gyro_x:
       name: "BMI270 Gyro X"
     gyro_y:
@@ -70,8 +73,8 @@ button:
       - lambda: |-
           id(pasco2).measure_now();
 
-# Radar TDET and PDET
 binary_sensor:
+  # Radar TDET
   - platform: gpio
     pin:
       number: GPIO06  # TDET pin
@@ -80,6 +83,7 @@ binary_sensor:
     name: "Radar TDET"
     id: radar_sensor_tdet
 
+  # Radar PDET
   - platform: gpio
     pin:
       number: GPIO07  # PDET pin
@@ -87,6 +91,17 @@ binary_sensor:
       inverted: true
     name: "Radar PDET"
     id: radar_sensor_pdet
+
+  # Window open/closed detection using accelerometer Z-axis
+  - platform: template
+    name: "Window Open"
+    id: window_open
+    device_class: window
+    lambda: |-
+      float threshold = 0.5;
+      float z = id(accel_z).state;
+      // Window closed: z ≈ 0.0 (gravity), Window open: z drops when tilted backwards
+      return abs(z) > threshold;  // Adjust threshold based on testing
 
 # TFT Display
 display:
