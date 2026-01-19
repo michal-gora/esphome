@@ -34,7 +34,7 @@ void XensivPasCO2::verify_communication_() {
 
   // All attempts failed
   this->failure_reason_ += "I2C communication test failed";
-  this->mark_failed("I2C communication test failed");
+  this->mark_failed(LOG_STR("I2C communication test failed"));
 }
 
 void XensivPasCO2::loop() {
@@ -97,12 +97,12 @@ void XensivPasCO2::setup_sensor(XensivPasCO2 *arg) {
   // Configure sensor interrupt register and GPIO pin if configured
   if (!arg->setup_interrupt_()) {
     arg->failure_reason_ += "Failed to set up interrupt; ";
-    arg->mark_failed("Failed to set up interrupt");
+    arg->mark_failed(LOG_STR("Failed to set up interrupt"));
   }
 
   if (!arg->update_operation_mode_()) {
     arg->failure_reason_ += "Failed to set operation mode; ";
-    arg->mark_failed("Failed to set operation mode");
+    arg->mark_failed(LOG_STR("Failed to set operation mode"));
   }
 
   // Testing single shot measurement to finalize initialization
