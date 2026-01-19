@@ -27,6 +27,7 @@ void XensivPasCO2::continue_setup_() {
     this->init_retry_count_++;
     if (this->init_retry_count_ < 5) {
       // Retry after 500ms
+      this->failure_reason_ += "I2C communication test failed, retrying...; ";
       this->set_timeout(500, [this]() { this->continue_setup_(); });
       return;
     }
