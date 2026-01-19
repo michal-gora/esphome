@@ -1,11 +1,10 @@
+# ... device firmware configs...
+
 # Custom configs
 external_components:
   - source: github://michal-gora/esphome@xensiv_sensor_shield
-    components: [xensiv_pas_co2_base, xensiv_pas_co2_i2c, xensiv_dps3xx_base, xensiv_dps3xx_i2c]
-    # refresh: 0s
-  - source: github://Frogy76/esphome_components
-    components: [bmi270]
-    # refresh: 0s
+    components: [xensiv_pas_co2_base, xensiv_pas_co2_i2c, xensiv_dps3xx_base, xensiv_dps3xx_i2c, bmi270]
+    refresh: 0s
 
 i2c:
   sda: GPIO20
@@ -23,9 +22,10 @@ sensor:
       name: "CO2"
       id: co2_sensor
     interrupt_pin: GPIO09
-    sensor_rate: 10s
+    sensor_rate: 1min
     operation_mode: continuous
     pressure_compensation_source: pressure_sensor
+    power_pin: GPIO13 # Enable PAS CO2 5V Power (GPIO13 HIGH)
   - platform: xensiv_dps3xx_i2c
     pressure:
       name: "DPS3XX Pressure"
@@ -44,28 +44,23 @@ sensor:
       name: "SHT3X-D Humidity"
       id: humidity_sensor
     update_interval: 10s
-  # - platform: bmi270
-  #   address: 0x69
-  #   accel_x:
-  #     name: "BMI270 Accel X"
-  #   accel_y:
-  #     name: "BMI270 Accel Y"
-  #   accel_z:
-  #     name: "BMI270 Accel Z"
-  #   gyro_x:
-  #     name: "BMI270 Gyro X"
-  #   gyro_y:
-  #     name: "BMI270 Gyro Y"
-  #   gyro_z:
-  #     name: "BMI270 Gyro Z"
-  #   temperature:
-  #     name: "BMI270 Temperature"
-  #   power_save_mode: NORMAL # LOW_POWER # OR NORMAL
-  #   update_interval: 5s
-  #   # Add new configuration options specific to BMI270 if needed
-  #   # For example, accelerometer and gyroscope range selection:
-  #   # accel_range: '8g' # Options: '2g', '4g', '8g', '16g' [cite: 5]
-  #   # gyro_range: '2000dps' # Options: '125dps', '250dps', '500dps', '1000dps', '2000dps' [cite: 5]
+  - platform: bmi270
+    address: 0x69
+    accel_x:
+      name: "BMI270 Accel X"
+    accel_y:
+      name: "BMI270 Accel Y"
+    accel_z:
+      name: "BMI270 Accel Z"
+    gyro_x:
+      name: "BMI270 Gyro X"
+    gyro_y:
+      name: "BMI270 Gyro Y"
+    gyro_z:
+      name: "BMI270 Gyro Z"
+    update_interval: 5s
+    temperature:
+      name: "BMI270 Temperature"
 
 # Fix: Use button platform for Home Assistant UI button
 button:
@@ -74,22 +69,6 @@ button:
     on_press:
       - lambda: |-
           id(pasco2).measure_now();
-
-# Enable PAS CO2 5V Power (GPIO13 HIGH)
-output:
-  - platform: gpio
-    id: static_high_output
-    pin:
-      number: GPIO13
-      mode: OUTPUT
-      inverted: false  # Set to `true` if HIGH/LOW needs to be inverted
-
-switch:
-  - platform: output
-    name: "Static High GPIO13"
-    output: static_high_output
-    restore_mode: ALWAYS_ON  # Ensure the output is always set to HIGH
-    internal: true  # Optional: Hide this switch from Home Assistant
 
 # Radar TDET and PDET
 binary_sensor:
@@ -135,7 +114,8 @@ display:
       auto humidity_color = Color(255, 128, 255);
       auto pressure_color = Color(128, 255, 255);
       auto temperature_color = Color(255, 255, 0);
-      auto tdet_color = Color(255, 255, 255);
+      auto tdet_color = Color(255, 0, 0);
+      auto pdet_color = Color(0, 255, 0);
 
       // Background
       it.fill(background_color);
@@ -145,7 +125,10 @@ display:
       if(id(humidity_sensor).has_state()) it.printf(80, 22, id(my_font), humidity_color, TextAlign::TOP_RIGHT, "%.1f ", humidity);
       if(id(pressure_sensor).has_state()) it.printf(80, 42, id(my_font), pressure_color, TextAlign::TOP_RIGHT, "%.1f ", pressure);
       if(id(dps_temperature_sensor).has_state() && id(sht_temperature_sensor).has_state()) it.printf(80, 62, id(my_font), temperature_color, TextAlign::TOP_RIGHT, "%.1f ", temperature);
-      if(id(radar_sensor_tdet).state) it.printf(125, 30, id(emoji_font), tdet_color, TextAlign::TOP_LEFT, "👋");
+      if(id(radar_sensor_tdet).has_state() && id(radar_sensor_tdet).state){
+        auto motion_color = id(radar_sensor_pdet).has_state() && id(radar_sensor_pdet).state ? pdet_color : tdet_color;
+        it.printf(125, 28, id(emoji_font), motion_color, TextAlign::TOP_LEFT, "👋");
+      }
 
       // Sensor units
       it.printf(80, 2, id(my_font), co2_color, TextAlign::TOP_LEFT, "ppm");
