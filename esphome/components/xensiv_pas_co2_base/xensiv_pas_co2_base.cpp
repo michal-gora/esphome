@@ -6,44 +6,38 @@ namespace xensiv_pas_co2_base {
 static const char *const TAG = "xensiv_pas_co2.component";
 
 void XensivPasCO2::setup() {
-  ESP_LOGCONFIG(TAG, "Setting up XensivPasCO2 component");
+  // Perform soft reset FIRST to put sensor in known state (especially needed after warm boot)
+  // This might fail if sensor is busy, but we'll verify communication after the delay
+  if (!this->write_byte(XENSIV_PAS_CO2_REG_SENS_RST, XENSIV_PAS_CO2_CMD_SOFT_RESET)) {
+    this->failure_reason_ += "Failed to write soft reset command; ";
+  }
 
-  // Test I2C communication first using scratch register
+  // Wait for soft reset to complete, then test I2C communication
+  this->set_timeout(XENSIV_PAS_CO2_SOFT_RESET_DELAY_MS, [this]() { this->verify_communication_(); });
+}
+
+void XensivPasCO2::verify_communication_() {
+  // Test I2C communication using scratch register
   for (int i = 0; i < 3; i++) {
     if (this->test_scratch_register_()) {
-      ESP_LOGCONFIG(TAG, "I2C communication test passed on attempt %d", i + 1);
-      break;
-    } else if (i < 2) {
-      ESP_LOGW(TAG, "I2C communication test attempt %d failed, retrying...", i + 1);
-    } else {
-      ESP_LOGE(TAG, "I2C communication test failed");
-      this->failure_reason_ += "I2C communication test failed";
-      this->mark_failed();
+      // Set up pressure compensation source callback after I2C is verified
+      if (this->pressure_compensation_source_ != nullptr) {
+        this->pressure_compensation_source_->add_on_state_callback([this](float pressure_hpa) {
+          ESP_LOGD(TAG, "Pressure compensation source updated: %.2f hPa", pressure_hpa);
+          this->set_pressure_compensation((uint16_t) pressure_hpa);
+        });
+      }
+
+      // Continue with sensor configuration
+      XensivPasCO2::setup_sensor(this);
+      this->failure_reason_ += "I2C communication test passed; ";
       return;
     }
   }
 
-  // Set up pressure compensation source callback early if configured
-  if (this->pressure_compensation_source_ != nullptr) {
-    this->pressure_compensation_source_->add_on_state_callback([this](float pressure_hpa) {
-      ESP_LOGD(TAG, "Pressure compensation source updated: %.2f hPa", pressure_hpa);
-      this->set_pressure_compensation((uint16_t) pressure_hpa);
-    });
-    ESP_LOGCONFIG(TAG, "Pressure compensation source callback registered");
-  }
-
-  // Perform full sensor reset (reset sticky bits, set to idle state)
-  // Soft reset - use XENSIV_PAS_CO2_CMD_SOFT_RESET command
-  if (this->write_byte(XENSIV_PAS_CO2_REG_SENS_RST, XENSIV_PAS_CO2_CMD_SOFT_RESET)) {
-    ESP_LOGCONFIG(TAG, "Sensor soft reset");
-  } else {
-    ESP_LOGW(TAG, "Failed to perform sensor soft reset");
-    this->failure_reason_ += "Failed to perform sensor soft reset";
-    this->mark_failed();
-  }
-
-  // Schedule sensor initialization after a delay to avoid blocking setup
-  this->set_timeout(XENSIV_PAS_CO2_SOFT_RESET_DELAY_MS, [this]() { XensivPasCO2::setup_sensor(this); });
+  // All attempts failed
+  this->failure_reason_ += "I2C communication test failed";
+  this->mark_failed();
 }
 
 void XensivPasCO2::loop() {
