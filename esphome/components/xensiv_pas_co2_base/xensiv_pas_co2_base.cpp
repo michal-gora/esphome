@@ -22,22 +22,19 @@ void XensivPasCO2::verify_communication_() {
     if (this->test_scratch_register_()) {
       // Set up pressure compensation source callback after I2C is verified
       if (this->pressure_compensation_source_ != nullptr) {
-        this->pressure_compensation_source_->add_on_state_callback([this](float pressure_hpa) {
-          ESP_LOGD(TAG, "Pressure compensation source updated: %.2f hPa", pressure_hpa);
-          this->set_pressure_compensation((uint16_t) pressure_hpa);
-        });
+        this->pressure_compensation_source_->add_on_state_callback(
+            [this](float pressure_hpa) { this->set_pressure_compensation((uint16_t) pressure_hpa); });
       }
 
       // Continue with sensor configuration
       XensivPasCO2::setup_sensor(this);
-      this->failure_reason_ += "I2C communication test passed; ";
       return;
     }
   }
 
   // All attempts failed
   this->failure_reason_ += "I2C communication test failed";
-  this->mark_failed();
+  this->mark_failed("I2C communication test failed");
 }
 
 void XensivPasCO2::loop() {
@@ -101,12 +98,12 @@ void XensivPasCO2::setup_sensor(XensivPasCO2 *arg) {
   // Configure sensor interrupt register and GPIO pin if configured
   if (!arg->setup_interrupt_()) {
     arg->failure_reason_ += "Failed to set up interrupt; ";
-    arg->mark_failed();
+    arg->mark_failed("Failed to set up interrupt");
   }
 
   if (!arg->update_operation_mode_()) {
     arg->failure_reason_ += "Failed to set operation mode; ";
-    arg->mark_failed();
+    arg->mark_failed("Failed to set operation mode");
   }
 
   // Testing single shot measurement to finalize initialization
@@ -361,7 +358,7 @@ void XensivPasCO2::read_co2_ppm() {
 void XensivPasCO2::dump_config() {
   ESP_LOGCONFIG(TAG, "XENSIV PASCO2 CO2 Sensor:");
 
-  if (this->is_failed()) {
+  if (this->is_failed() || true) {
     ESP_LOGE(TAG, "Failure Reason: %s", this->failure_reason_.c_str());
   }
 
